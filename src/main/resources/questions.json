@@ -1,0 +1,57 @@
+[
+  {
+    "id": "q1",
+    "text": "What is the ideal range for an excellent CIBIL score in India?",
+    "options": [
+      "500–650",
+      "650–750",
+      "750–900",
+      "900–1000"
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": "q2",
+    "text": "Which factor has the highest impact on your credit score?",
+    "options": [
+      "Timely EMI payments",
+      "Number of credit cards",
+      "Total credit limit",
+      "Checking your own report"
+    ],
+    "correctIndex": 0
+  },
+  {
+    "id": "q3",
+    "text": "What happens to your CIBIL score when you check it yourself?",
+    "options": [
+      "Drops by 10–20 points",
+      "Drops by 5 points",
+      "Zero impact, it's a soft inquiry",
+      "Improves slightly"
+    ],
+    "correctIndex": 2
+  },
+  {
+    "id": "q4",
+    "text": "You apply to 5 banks for a loan in one week. What happens?",
+    "options": [
+      "No effect, banks don't share data",
+      "Score drops, you look credit-hungry (hard inquiries)",
+      "Score improves, shows you're in demand",
+      "Only affects score if all reject you"
+    ],
+    "correctIndex": 1
+  },
+  {
+    "id": "q5",
+    "text": "You have an old credit card you never use. Should you close it?",
+    "options": [
+      "Yes, unused cards hurt your score",
+      "Keep it open for longer history & lower utilisation",
+      "Close it to reduce fraud risk",
+      "It makes no difference either way"
+    ],
+    "correctIndex": 1
+  }
+]
