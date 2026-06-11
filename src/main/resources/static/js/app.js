@@ -229,11 +229,18 @@
 
     function selectOption(index) {
         clearInterval(timerInterval);
+        const q = state.questions[state.currentQ];
+        const correct = q.correctIndex;
         const options = $('q-options').children;
         for (let i = 0; i < options.length; i++) options[i].style.pointerEvents = 'none';
-        options[index].classList.add('selected');
-        state.answers.push({ questionId: state.questions[state.currentQ].id, selectedIndex: index });
-        setTimeout(() => advanceQuestion(), 600);
+
+        options[correct].classList.add('correct');
+        if (index !== correct) {
+            options[index].classList.add('wrong');
+        }
+
+        state.answers.push({ questionId: q.id, selectedIndex: index });
+        setTimeout(() => advanceQuestion(), 1000);
     }
 
     function autoAdvance() {

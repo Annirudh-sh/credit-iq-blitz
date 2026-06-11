@@ -28,7 +28,7 @@ public class QuestionService {
 
     public List<QuestionDto> getAllForClient() {
         return questions.stream()
-                .map(q -> new QuestionDto(q.id(), q.text(), q.options()))
+                .map(q -> new QuestionDto(q.id(), q.text(), q.options(), q.correctIndex()))
                 .toList();
     }
 
