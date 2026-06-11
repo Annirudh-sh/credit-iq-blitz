@@ -17,6 +17,9 @@ spring:
 app:
   quiz:
     coins-per-question: ${COINS_PER_QUESTION:50}
+  cricket:
+    coins-per-run: ${COINS_PER_RUN:10}
+    max-balls: ${CRICKET_MAX_BALLS:6}
   leaderboard:
     size: ${LEADERBOARD_SIZE:10}
   otp:

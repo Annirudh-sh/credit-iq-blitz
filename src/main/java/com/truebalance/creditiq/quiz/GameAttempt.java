@@ -12,10 +12,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "h_quiz_attempt")
+@Table(name = "h_game_attempt")
 @Getter
 @Setter
-public class QuizAttempt {
+public class GameAttempt {
 
     @Id
     @Column(length = 36)
@@ -24,14 +24,16 @@ public class QuizAttempt {
     @Column(name = "user_id", length = 36)
     private String userId;
 
+    @Column(name = "game_type", nullable = false, length = 20)
+    private String gameType = "CREDIT_IQ";
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
-    @Column(name = "correct_count")
-    private Integer correctCount;
+    private Integer score;
 
     @Column(name = "time_taken_sec")
     private Double timeTakenSec;

@@ -24,8 +24,8 @@ public class Lead {
     @Column(name = "user_id", nullable = false, length = 36)
     private String userId;
 
-    @Column(name = "quiz_attempt_id", nullable = false, length = 36)
-    private String quizAttemptId;
+    @Column(name = "game_attempt_id", nullable = false, length = 36)
+    private String gameAttemptId;
 
     @Column(name = "intent_category", length = 10)
     private String intentCategory;
