@@ -34,6 +34,13 @@ public class QuestionService {
                 .toList();
     }
 
+    public int getCorrectIndex(String questionId) {
+        for (var q : questions) {
+            if (q.id().equals(questionId)) return q.correctIndex();
+        }
+        return -1;
+    }
+
     public Map<String, Integer> getAnswerKey() {
         var map = new LinkedHashMap<String, Integer>();
         for (var q : questions) {

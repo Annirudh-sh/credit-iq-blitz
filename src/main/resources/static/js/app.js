@@ -3,7 +3,6 @@
 
     const API = '/api';
     const QUESTION_TIME = 15;
-    const LEADERBOARD_POLL_MS = 3000;
 
     const SAVE_KEY = 'creditiq_state';
 
@@ -146,8 +145,12 @@
         }
         state.leaderboard.forEach(entry => {
             const isMe = highlightRank && entry.rank === highlightRank;
+            let cls = 'lb-row';
+            if (isMe) cls += ' highlight';
+            else if (entry.rank === 1) cls += ' rank-gold';
+            else if (entry.rank === 2) cls += ' rank-silver';
             const row = document.createElement('div');
-            row.className = 'lb-row' + (isMe ? ' highlight' : '');
+            row.className = cls;
             row.innerHTML = `
                 <span class="lb-rank">${entry.rank}</span>
                 <span class="lb-name">${entry.name}${isMe ? ' (You)' : ''}</span>
@@ -164,14 +167,27 @@
         } catch (e) { /* silent */ }
     }
 
+    let fibA = 1, fibB = 1;
+
     function startLeaderboardPolling() {
+        fibA = 1; fibB = 1;
         pollLeaderboard();
-        leaderboardInterval = setInterval(() => pollLeaderboard(), LEADERBOARD_POLL_MS);
+        scheduleNextPoll();
+    }
+
+    function scheduleNextPoll() {
+        leaderboardInterval = setTimeout(() => {
+            pollLeaderboard();
+            const next = fibA + fibB;
+            fibA = fibB;
+            fibB = next;
+            scheduleNextPoll();
+        }, fibB * 1000);
     }
 
     function stopLeaderboardPolling() {
         if (leaderboardInterval) {
-            clearInterval(leaderboardInterval);
+            clearTimeout(leaderboardInterval);
             leaderboardInterval = null;
         }
     }
@@ -206,6 +222,8 @@
             state.questions = data.questions;
             state.currentQ = 0;
             state.answers = [];
+            state.quizCoins = 0;
+            $('quiz-coins-earned').textContent = '0 coins';
             showQuestion();
         } catch (e) {
             toast(e.message);
@@ -252,7 +270,7 @@
         $('q-timer').classList.toggle('urgent', sec <= 5);
     }
 
-    function selectOption(index) {
+    async function selectOption(index) {
         clearInterval(timerInterval);
         const q = state.questions[state.currentQ];
         const options = $('q-options').children;
@@ -260,7 +278,20 @@
         options[index].classList.add('selected');
 
         state.answers.push({ questionId: q.id, selectedIndex: index });
-        setTimeout(() => advanceQuestion(), 600);
+
+        try {
+            const result = await api('POST', '/quiz/check', { questionId: q.id, selectedIndex: index });
+            options[result.correctIndex].classList.add('correct');
+            if (result.correct) {
+                state.quizCoins = (state.quizCoins || 0) + 50;
+                $('quiz-coins-earned').textContent = state.quizCoins + ' coins';
+            } else {
+                options[index].classList.remove('selected');
+                options[index].classList.add('wrong');
+            }
+        } catch (e) { /* silent — feedback is nice-to-have */ }
+
+        setTimeout(() => advanceQuestion(), 1200);
     }
 
     function autoAdvance() {
@@ -278,52 +309,9 @@
                 state.coins = data.coins;
                 state.correctCount = data.score;
                 state.timeTakenSec = data.timeTakenSec;
-                state.correctAnswers = data.correctAnswers;
-                showQuizReview();
+                goToPhoneScreen();
             } catch (e) { toast(e.message); }
         }
-    }
-
-    function showQuizReview() {
-        show('screen-question');
-        $('q-count').textContent = 'Results';
-        $('q-timer').style.display = 'none';
-        $('progress-fill').style.width = '100%';
-        $('q-text').textContent = `You got ${state.correctCount} of ${state.questions.length} correct!`;
-
-        const optContainer = $('q-options');
-        optContainer.innerHTML = '';
-        state.questions.forEach((q, qi) => {
-            const label = document.createElement('div');
-            label.style.cssText = 'font-size:14px;font-weight:600;margin-top:12px;color:var(--ink)';
-            label.textContent = `Q${qi + 1}: ${q.text}`;
-            optContainer.appendChild(label);
-
-            const correctIdx = state.correctAnswers[q.id];
-            const userIdx = state.answers[qi] ? state.answers[qi].selectedIndex : -1;
-
-            q.options.forEach((opt, oi) => {
-                const div = document.createElement('div');
-                div.className = 'option';
-                div.textContent = opt;
-                div.style.pointerEvents = 'none';
-                div.style.padding = '10px 14px';
-                div.style.fontSize = '13px';
-                if (oi === correctIdx) div.classList.add('correct');
-                if (oi === userIdx && userIdx !== correctIdx) div.classList.add('wrong');
-                optContainer.appendChild(div);
-            });
-        });
-
-        const btn = document.createElement('button');
-        btn.className = 'btn-primary';
-        btn.style.cssText = 'margin-top:20px;align-self:center';
-        btn.textContent = 'Continue';
-        btn.addEventListener('click', () => {
-            $('q-timer').style.display = '';
-            goToPhoneScreen();
-        });
-        optContainer.appendChild(btn);
     }
 
     // ══════════════════════════════
@@ -336,6 +324,7 @@
         totalRuns: 0,
         ballInFlight: false,
         swung: false,
+        isOut: false,
         ballTimeout: null,
         bowlStart: 0,
         bowlDuration: 1200,
@@ -352,6 +341,9 @@
             cricket.totalBalls = data.totalBalls || 6;
             cricket.currentBall = 0;
             cricket.totalRuns = 0;
+            cricket.isOut = false;
+            $('btn-cricket-start').disabled = false;
+            $('btn-cricket-start').textContent = 'Start batting';
             showCricketGame();
         } catch (e) {
             toast(e.message);
@@ -375,7 +367,7 @@
     }
 
     function bowlBall() {
-        if (cricket.currentBall >= cricket.totalBalls) {
+        if (cricket.isOut || cricket.currentBall >= cricket.totalBalls) {
             finishCricket();
             return;
         }
@@ -424,7 +416,7 @@
     }
 
     function handleSwing() {
-        if (!cricket.ballInFlight || cricket.swung) return;
+        if (!cricket.ballInFlight || cricket.swung || cricket.isOut) return;
         cricket.swung = true;
         clearTimeout(cricket.ballTimeout);
 
@@ -486,6 +478,8 @@
     function handleMiss() {
         cricket.swung = true;
         cricket.ballInFlight = false;
+        cricket.isOut = true;
+        clearTimeout(cricket.ballTimeout);
 
         const ball = $('cricket-ball');
         const field = $('cricket-field');
@@ -508,9 +502,7 @@
 
         setTimeout(() => {
             result.className = 'shot-result';
-            $('stumps').classList.remove('broken');
-            $('cricket-bat').classList.remove('swing');
-            bowlBall();
+            finishCricket();
         }, 1800);
     }
 
@@ -525,6 +517,7 @@
         result.className = 'shot-result show' + (cssClass ? ' ' + cssClass : '');
 
         setTimeout(() => {
+            if (cricket.isOut) return;
             result.className = 'shot-result';
             $('cricket-bat').classList.remove('swing');
             const ball = $('cricket-ball');
@@ -571,21 +564,52 @@
     function validatePhoneForm() {
         const name = $('name-input').value.trim();
         const phone = $('phone-input').value.replace(/\D/g, '');
-        $('btn-send-otp').disabled = !(name.length > 0 && phone.length === 10);
+        const nameValid = name.length === 0 || /^[A-Za-z\s]+$/.test(name);
+        const nameComplete = /^[A-Za-z\s]{2,}$/.test(name);
+        const phoneValid = phone.length === 0 || /^[6-9]/.test(phone);
+        const phoneComplete = /^[6-9]\d{9}$/.test(phone);
+
+        const nameErr = $('name-error');
+        const phoneErr = $('phone-error');
+        const nameGroup = $('name-input').closest('.phone-input-group');
+        const phoneGroup = $('phone-input').closest('.phone-input-group');
+
+        if (!nameValid) {
+            nameGroup.classList.add('input-error');
+            nameErr.textContent = 'Only letters (A-Z) and spaces allowed';
+            nameErr.style.display = '';
+        } else {
+            nameGroup.classList.remove('input-error');
+            nameErr.style.display = 'none';
+        }
+
+        if (!phoneValid) {
+            phoneGroup.classList.add('input-error');
+            phoneErr.textContent = 'Phone number must start from 6, 7, 8 or 9';
+            phoneErr.style.display = '';
+        } else if (phone.length > 0 && phone.length < 10) {
+            phoneGroup.classList.remove('input-error');
+            phoneErr.textContent = 'Enter 10 digit mobile number';
+            phoneErr.style.display = '';
+        } else {
+            phoneGroup.classList.remove('input-error');
+            phoneErr.style.display = 'none';
+        }
+
+        $('btn-send-otp').disabled = !(nameComplete && phoneComplete);
     }
 
     $('name-input').addEventListener('input', validatePhoneForm);
 
     $('phone-input').addEventListener('input', (e) => {
-        const val = e.target.value.replace(/\D/g, '');
-        e.target.value = val;
+        e.target.value = e.target.value.replace(/\D/g, '');
         validatePhoneForm();
     });
 
     $('btn-send-otp').addEventListener('click', async () => {
         const phone = $('phone-input').value.trim();
         const name = $('name-input').value.trim();
-        if (phone.length !== 10 || !name) return;
+        if (!/^[6-9]\d{9}$/.test(phone) || !/^[A-Za-z\s]{2,}$/.test(name)) return;
 
         $('btn-send-otp').disabled = true;
         $('btn-send-otp').innerHTML = '<span class="spinner"></span>';
@@ -717,24 +741,70 @@
         show('screen-result');
         const lb = [...state.leaderboard];
         const displayName = state.name || 'You';
-        const userEntry = { rank: state.rank, name: displayName, coins: state.coins };
+        const userRank = state.rank;
+        const userEntry = { rank: userRank, name: displayName, coins: state.coins, isMe: true };
 
-        const insertIdx = lb.findIndex(e => e.rank >= state.rank);
+        // Insert user at their rank position
+        const insertIdx = lb.findIndex(e => e.rank >= userRank);
         if (insertIdx >= 0) {
             lb.splice(insertIdx, 0, userEntry);
-            lb.forEach((e, i) => e.rank = i + 1);
         } else {
-            userEntry.rank = lb.length + 1;
             lb.push(userEntry);
         }
+        // Re-number ranks
+        lb.forEach((e, i) => e.rank = i + 1);
 
-        const display = lb.slice(0, Math.max(5, state.rank));
+        // Find user's actual position in the sorted list
+        const userPos = lb.findIndex(e => e.isMe);
+        const maxVisible = 6;
+
+        let display;
+        if (userPos < maxVisible) {
+            // User is within top N — show top N
+            display = lb.slice(0, maxVisible);
+        } else {
+            // User is outside top N — show top (N-1) + user at bottom
+            display = lb.slice(0, maxVisible - 1);
+            const me = lb[userPos];
+            me.rank = userRank;
+            display.push(me);
+        }
+
         state.leaderboard = display;
-        renderLeaderboard('lb-result', state.rank);
+        renderResultLeaderboard('lb-result');
 
         $('result-coins').textContent = state.coins;
         const total = state.totalPlayers.toLocaleString('en-IN');
-        $('result-rank-text').textContent = `Rank ${state.rank} of ${total} today`;
+        $('result-rank-text').textContent = `Rank ${userRank} of ${total} today`;
+    }
+
+    function renderResultLeaderboard(containerId) {
+        const container = $(containerId);
+        container.innerHTML = '';
+        state.leaderboard.forEach((entry, i) => {
+            const isMe = entry.isMe === true;
+
+            if (i > 0 && entry.rank - state.leaderboard[i - 1].rank > 1) {
+                const dots = document.createElement('div');
+                dots.style.cssText = 'text-align:center;color:var(--muted);font-size:12px;padding:4px 0';
+                dots.textContent = '...';
+                container.appendChild(dots);
+            }
+
+            let cls = 'lb-row';
+            if (isMe) cls += ' highlight';
+            else if (entry.rank === 1) cls += ' rank-gold';
+            else if (entry.rank === 2) cls += ' rank-silver';
+
+            const row = document.createElement('div');
+            row.className = cls;
+            row.innerHTML = `
+                <span class="lb-rank">${entry.rank}</span>
+                <span class="lb-name">${entry.name}${isMe ? ' (You)' : ''}</span>
+                <span class="lb-coins">${entry.coins}</span>
+            `;
+            container.appendChild(row);
+        });
     }
 
     // Leaderboard auto-refresh on active screens
@@ -755,7 +825,17 @@
         state.answers = [];
         state.coins = 0;
         state.correctCount = 0;
-        state.correctAnswers = null;
+
+        // Reset all buttons to default state
+        $('btn-start').disabled = false;
+        $('btn-start').textContent = 'Start the blitz';
+        $('btn-cricket-start').disabled = false;
+        $('btn-cricket-start').textContent = 'Start batting';
+        $('btn-send-otp').disabled = true;
+        $('btn-send-otp').textContent = 'Send OTP';
+        $('btn-verify').disabled = true;
+        $('btn-verify').textContent = 'Verify & reveal rank';
+
         show('screen-home');
     });
 

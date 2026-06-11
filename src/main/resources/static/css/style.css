@@ -274,6 +274,17 @@ body {
     transition: width 0.3s ease;
 }
 
+.quiz-hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.coin-pill.earned {
+    background: rgba(52, 168, 83, 0.15);
+    color: #1B5E20;
+}
+
 .coin-pill {
     display: inline-flex;
     align-items: center;
@@ -377,10 +388,10 @@ body {
 .lb-row {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    background: #FAFAF8;
-    gap: 12px;
+    padding: 16px 16px;
+    border-radius: var(--radius);
+    background: transparent;
+    gap: 16px;
 }
 
 .lb-row.highlight {
@@ -389,31 +400,52 @@ body {
 }
 
 .lb-rank {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    font-size: 13px;
+    width: 32px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--muted);
-    background: var(--line);
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.lb-row.rank-gold {
+    background: #FFF8E8;
+    border-radius: var(--radius);
+}
+
+.lb-row.rank-gold .lb-rank {
+    color: var(--gold-dark);
+}
+
+.lb-row.rank-gold .lb-name {
+    color: var(--gold-dark);
+}
+
+.lb-row.rank-gold .lb-coins {
+    color: var(--gold-dark);
+}
+
+.lb-row.rank-silver {
+    background: #F4F4F2;
+    border-radius: var(--radius);
+}
+
+.lb-row.rank-silver .lb-rank {
+    color: #777;
 }
 
 .lb-row.highlight .lb-rank {
-    background: var(--orange);
-    color: #fff;
+    color: var(--orange-dark);
 }
 
 .lb-name {
     flex: 1;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
 }
 
 .lb-coins {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
 }
 
@@ -464,6 +496,16 @@ body {
     font-family: 'Poppins', sans-serif;
     font-size: 15px;
     background: transparent;
+}
+
+.phone-input-group.input-error {
+    border-color: var(--red);
+}
+
+.field-error {
+    font-size: 12px;
+    color: var(--red);
+    margin: 4px 0 0 4px;
 }
 
 .phone-hint {
@@ -730,11 +772,11 @@ body {
 
 /* ── Cricket Game ── */
 .cricket-hero {
-    background: #E8F5E9 !important;
+    background: var(--orange-light) !important;
 }
 
 .cricket-hero svg {
-    color: #2E7D32 !important;
+    color: var(--orange) !important;
 }
 
 .cricket-screen {

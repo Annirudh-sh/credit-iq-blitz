@@ -1,5 +1,7 @@
 package com.truebalance.creditiq.quiz;
 
+import com.truebalance.creditiq.quiz.dto.CheckAnswerRequest;
+import com.truebalance.creditiq.quiz.dto.CheckAnswerResponse;
 import com.truebalance.creditiq.quiz.dto.StartResponse;
 import com.truebalance.creditiq.quiz.dto.SubmitRequest;
 import com.truebalance.creditiq.quiz.dto.SubmitResponse;
@@ -16,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuizController {
 
     private final QuizService quizService;
+    private final QuestionService questionService;
 
-    public QuizController(QuizService quizService) {
+    public QuizController(QuizService quizService, QuestionService questionService) {
         this.quizService = quizService;
+        this.questionService = questionService;
     }
 
     @PostMapping("/start")
@@ -28,6 +32,13 @@ public class QuizController {
             @RequestHeader(value = "X-Latitude", required = false) Double latitude,
             @RequestHeader(value = "X-Longitude", required = false) Double longitude) {
         return quizService.start(deviceId, deviceModel, latitude, longitude);
+    }
+
+    @PostMapping("/check")
+    public CheckAnswerResponse check(@RequestBody @Valid CheckAnswerRequest request) {
+        int correctIndex = questionService.getCorrectIndex(request.questionId());
+        boolean correct = (correctIndex == request.selectedIndex());
+        return new CheckAnswerResponse(correct, correctIndex);
     }
 
     @PostMapping("/{attemptId}/submit")
