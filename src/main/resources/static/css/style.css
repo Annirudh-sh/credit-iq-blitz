@@ -116,14 +116,19 @@ body {
     height: 28px;
 }
 
+.game-card-icon.cricket-icon svg {
+    width: 36px;
+    height: 36px;
+}
+
 .game-card-icon.quiz-icon {
     background: var(--orange-light);
     color: var(--orange);
 }
 
 .game-card-icon.cricket-icon {
-    background: #E8F5E9;
-    color: #2E7D32;
+    background: var(--orange-light);
+    color: var(--orange);
 }
 
 .game-card-info h3 {
