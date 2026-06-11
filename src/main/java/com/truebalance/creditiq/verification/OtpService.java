@@ -4,8 +4,8 @@ import com.truebalance.creditiq.common.BadRequestException;
 import com.truebalance.creditiq.common.NotFoundException;
 import com.truebalance.creditiq.config.AppProperties;
 import com.truebalance.creditiq.enrichment.EnrichmentService;
-import com.truebalance.creditiq.quiz.QuizAttempt;
-import com.truebalance.creditiq.quiz.QuizAttemptRepository;
+import com.truebalance.creditiq.quiz.GameAttempt;
+import com.truebalance.creditiq.quiz.GameAttemptRepository;
 import com.truebalance.creditiq.verification.dto.VerifyResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,14 +34,14 @@ public class OtpService {
     private final OtpCodeRepository otpRepository;
     private final UserRepository userRepository;
     private final LeadRepository leadRepository;
-    private final QuizAttemptRepository attemptRepository;
+    private final GameAttemptRepository attemptRepository;
     private final EnrichmentService enrichmentService;
     private final AppProperties appProperties;
 
     public OtpService(OtpCodeRepository otpRepository,
                       UserRepository userRepository,
                       LeadRepository leadRepository,
-                      QuizAttemptRepository attemptRepository,
+                      GameAttemptRepository attemptRepository,
                       EnrichmentService enrichmentService,
                       AppProperties appProperties) {
         this.otpRepository = otpRepository;
@@ -77,7 +77,7 @@ public class OtpService {
             otpRepository.save(otp);
         }
 
-        QuizAttempt attempt = attemptRepository.findById(attemptId)
+        GameAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new NotFoundException("Attempt not found"));
 
         if (attempt.getCoins() == null) {
@@ -109,7 +109,7 @@ public class OtpService {
         // Create lead record
         var lead = new Lead();
         lead.setUserId(user.getId());
-        lead.setQuizAttemptId(attempt.getId());
+        lead.setGameAttemptId(attempt.getId());
         lead.setCibilConsent(cibilConsent);
         lead.setCommsConsent(commsConsent);
         lead.setConsentAt(Instant.now());
@@ -119,9 +119,9 @@ public class OtpService {
         // Enrichment (CIBIL check, categorize, CRM push)
         enrichmentService.enrich(user, lead, attempt.getCoins());
 
-        long above = attemptRepository.countRankedAbove(attempt.getCoins(), attempt.getTimeTakenSec());
+        long above = attemptRepository.countRankedAbove(attempt.getGameType(), attempt.getCoins(), attempt.getTimeTakenSec());
         int rank = (int) above + 1;
-        long totalPlayers = attemptRepository.countByVerifiedTrue();
+        long totalPlayers = attemptRepository.countByVerifiedTrueAndGameType(attempt.getGameType());
 
         return new VerifyResponse(rank, attempt.getCoins(), totalPlayers);
     }

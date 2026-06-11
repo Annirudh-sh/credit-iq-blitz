@@ -1,35 +1,40 @@
-package com.truebalance.creditiq.quiz;
+package com.truebalance.creditiq.cricket;
 
 import com.truebalance.creditiq.common.BadRequestException;
 import com.truebalance.creditiq.common.GameType;
 import com.truebalance.creditiq.common.NotFoundException;
-import com.truebalance.creditiq.quiz.dto.StartResponse;
-import com.truebalance.creditiq.quiz.dto.SubmitRequest;
-import com.truebalance.creditiq.quiz.dto.SubmitResponse;
+import com.truebalance.creditiq.config.AppProperties;
+import com.truebalance.creditiq.cricket.dto.CricketStartResponse;
+import com.truebalance.creditiq.cricket.dto.CricketSubmitRequest;
+import com.truebalance.creditiq.cricket.dto.CricketSubmitResponse;
+import com.truebalance.creditiq.quiz.DeviceInfo;
+import com.truebalance.creditiq.quiz.DeviceInfoRepository;
+import com.truebalance.creditiq.quiz.GameAttempt;
+import com.truebalance.creditiq.quiz.GameAttemptRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
 
 @Service
-public class QuizService {
+public class CricketService {
 
     private final GameAttemptRepository attemptRepository;
     private final DeviceInfoRepository deviceInfoRepository;
-    private final QuestionService questionService;
+    private final AppProperties appProperties;
 
-    public QuizService(GameAttemptRepository attemptRepository,
-                       DeviceInfoRepository deviceInfoRepository,
-                       QuestionService questionService) {
+    public CricketService(GameAttemptRepository attemptRepository,
+                          DeviceInfoRepository deviceInfoRepository,
+                          AppProperties appProperties) {
         this.attemptRepository = attemptRepository;
         this.deviceInfoRepository = deviceInfoRepository;
-        this.questionService = questionService;
+        this.appProperties = appProperties;
     }
 
-    public StartResponse start(String deviceId, String deviceType, String deviceModel,
-                               String browserInfo, String ipAddress, Double lat, Double lng) {
+    public CricketStartResponse start(String deviceId, String deviceType, String deviceModel,
+                                      String browserInfo, String ipAddress, Double lat, Double lng) {
         var attempt = new GameAttempt();
-        attempt.setGameType(GameType.CREDIT_IQ.name());
+        attempt.setGameType(GameType.CRICKET.name());
         attempt.setStartedAt(Instant.now());
         attemptRepository.save(attempt);
 
@@ -44,10 +49,10 @@ public class QuizService {
         device.setUserLng(lng);
         deviceInfoRepository.save(device);
 
-        return new StartResponse(attempt.getId(), questionService.getAllForClient());
+        return new CricketStartResponse(attempt.getId(), appProperties.cricket().maxBalls());
     }
 
-    public SubmitResponse submit(String attemptId, SubmitRequest request) {
+    public CricketSubmitResponse submit(String attemptId, CricketSubmitRequest request) {
         var attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new NotFoundException("Attempt not found"));
 
@@ -55,9 +60,11 @@ public class QuizService {
             throw new BadRequestException("Already submitted");
         }
 
+        int maxRuns = appProperties.cricket().maxBalls() * 6;
+        int score = Math.max(0, Math.min(request.totalRuns(), maxRuns));
+        int coins = GameType.CRICKET.toCoins(score);
+
         Instant now = Instant.now();
-        int score = questionService.score(request.answers());
-        int coins = GameType.CREDIT_IQ.toCoins(score);
         double timeTakenSec = Duration.between(attempt.getStartedAt(), now).toMillis() / 1000.0;
 
         attempt.setSubmittedAt(now);
@@ -66,6 +73,6 @@ public class QuizService {
         attempt.setTimeTakenSec(timeTakenSec);
         attemptRepository.save(attempt);
 
-        return new SubmitResponse(coins, score, timeTakenSec);
+        return new CricketSubmitResponse(coins, score, timeTakenSec);
     }
 }

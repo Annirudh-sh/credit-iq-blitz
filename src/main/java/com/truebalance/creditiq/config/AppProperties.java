@@ -5,11 +5,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         Quiz quiz,
+        Cricket cricket,
         Leaderboard leaderboard,
         Otp otp,
         Integrations integrations
 ) {
     public record Quiz(int coinsPerQuestion) {}
+
+    public record Cricket(int coinsPerRun, int maxBalls) {}
 
     public record Leaderboard(int size) {}
 

@@ -3,6 +3,7 @@ package com.truebalance.creditiq.leaderboard;
 import com.truebalance.creditiq.leaderboard.dto.LeaderboardEntry;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -18,7 +19,7 @@ public class LeaderboardController {
     }
 
     @GetMapping
-    public List<LeaderboardEntry> get() {
-        return leaderboardService.getTop();
+    public List<LeaderboardEntry> get(@RequestParam(defaultValue = "CREDIT_IQ") String gameType) {
+        return leaderboardService.getTop(gameType);
     }
 }

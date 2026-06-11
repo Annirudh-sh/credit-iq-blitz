@@ -20,8 +20,8 @@ public class DeviceInfo {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "quiz_attempt_id", nullable = false, length = 36)
-    private String quizAttemptId;
+    @Column(name = "game_attempt_id", nullable = false, length = 36)
+    private String gameAttemptId;
 
     @Column(name = "device_id", length = 64)
     private String deviceId;

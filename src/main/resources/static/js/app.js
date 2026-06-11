@@ -6,6 +6,7 @@
     const LEADERBOARD_POLL_MS = 3000;
 
     let state = {
+        gameType: null,
         attemptId: null,
         questions: [],
         currentQ: 0,
@@ -27,12 +28,10 @@
     // ── Device info ──
 
     function parseDeviceModel(ua) {
-        // Android: "... Android 13; SM-G991B ..." or "... Android 12; Pixel 6 ..."
         const android = ua.match(/;\s*([^;)]+)\s+Build\//);
         if (android) return android[1].trim();
         const android2 = ua.match(/Android[^;]*;\s*([^;)]+)/);
         if (android2) return android2[1].trim();
-        // iOS: map platform to model
         if (/iPhone/.test(ua)) return 'iPhone';
         if (/iPad/.test(ua)) return 'iPad';
         if (/Macintosh/.test(ua)) return 'Mac';
@@ -56,7 +55,6 @@
         locationReady: false
     };
 
-    // Request location eagerly on page load
     const locationPromise = new Promise(resolve => {
         if (!navigator.geolocation) { resolve(); return; }
         navigator.geolocation.getCurrentPosition(
@@ -71,7 +69,6 @@
         );
     });
 
-    // Wait for location with a max timeout (used before first API call)
     function waitForLocation(ms) {
         if (device.locationReady) return Promise.resolve();
         return Promise.race([
@@ -117,7 +114,7 @@
         return res.json();
     }
 
-    // ── Leaderboard rendering ──
+    // ── Leaderboard ──
 
     function renderLeaderboard(containerId, highlightRank) {
         const container = $(containerId);
@@ -137,14 +134,14 @@
 
     async function pollLeaderboard() {
         try {
-            const data = await api('GET', '/leaderboard');
+            const data = await api('GET', '/leaderboard?gameType=' + (state.gameType || 'CREDIT_IQ'));
             state.leaderboard = data;
         } catch (e) { /* silent */ }
     }
 
     function startLeaderboardPolling() {
         pollLeaderboard();
-        leaderboardInterval = setInterval(pollLeaderboard, LEADERBOARD_POLL_MS);
+        leaderboardInterval = setInterval(() => pollLeaderboard(), LEADERBOARD_POLL_MS);
     }
 
     function stopLeaderboardPolling() {
@@ -154,7 +151,25 @@
         }
     }
 
-    // ── Screen 1: Start ──
+    // ══════════════════════════════
+    // SCREEN 0: Home / Game Selection
+    // ══════════════════════════════
+
+    document.querySelectorAll('.game-card[data-game]').forEach(card => {
+        card.addEventListener('click', () => {
+            const game = card.dataset.game;
+            state.gameType = game;
+            if (game === 'CREDIT_IQ') {
+                show('screen-start');
+            } else if (game === 'CRICKET') {
+                show('screen-cricket-start');
+            }
+        });
+    });
+
+    // ══════════════════════════════
+    // CREDIT IQ BLITZ (Quiz)
+    // ══════════════════════════════
 
     $('btn-start').addEventListener('click', async () => {
         $('btn-start').disabled = true;
@@ -174,8 +189,6 @@
         }
     });
 
-    // ── Screen 2: Questions ──
-
     function showQuestion() {
         show('screen-question');
         const q = state.questions[state.currentQ];
@@ -191,7 +204,6 @@
             div.addEventListener('click', () => selectOption(i));
             optContainer.appendChild(div);
         });
-
         startTimer();
     }
 
@@ -199,21 +211,12 @@
         let seconds = QUESTION_TIME;
         updateTimerDisplay(seconds);
         $('progress-fill').style.width = '100%';
-
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             seconds--;
             updateTimerDisplay(seconds);
             $('progress-fill').style.width = ((seconds / QUESTION_TIME) * 100) + '%';
-
-            if (seconds <= 5) {
-                $('q-timer').classList.add('urgent');
-            }
-
-            if (seconds <= 0) {
-                clearInterval(timerInterval);
-                autoAdvance();
-            }
+            if (seconds <= 0) { clearInterval(timerInterval); autoAdvance(); }
         }, 1000);
     }
 
@@ -227,24 +230,14 @@
     function selectOption(index) {
         clearInterval(timerInterval);
         const options = $('q-options').children;
-        for (let i = 0; i < options.length; i++) {
-            options[i].style.pointerEvents = 'none';
-        }
+        for (let i = 0; i < options.length; i++) options[i].style.pointerEvents = 'none';
         options[index].classList.add('selected');
-
-        state.answers.push({
-            questionId: state.questions[state.currentQ].id,
-            selectedIndex: index
-        });
-
+        state.answers.push({ questionId: state.questions[state.currentQ].id, selectedIndex: index });
         setTimeout(() => advanceQuestion(), 600);
     }
 
     function autoAdvance() {
-        state.answers.push({
-            questionId: state.questions[state.currentQ].id,
-            selectedIndex: -1
-        });
+        state.answers.push({ questionId: state.questions[state.currentQ].id, selectedIndex: -1 });
         advanceQuestion();
     }
 
@@ -253,26 +246,249 @@
         if (state.currentQ < state.questions.length) {
             showQuestion();
         } else {
-            await submitQuiz();
+            try {
+                const data = await api('POST', `/quiz/${state.attemptId}/submit`, { answers: state.answers });
+                state.coins = data.coins;
+                state.correctCount = data.correctCount;
+                state.timeTakenSec = data.timeTakenSec;
+                goToPhoneScreen();
+            } catch (e) { toast(e.message); }
         }
     }
 
-    async function submitQuiz() {
+    // ══════════════════════════════
+    // TB CRICKET
+    // ══════════════════════════════
+
+    const cricket = {
+        totalBalls: 6,
+        currentBall: 0,
+        totalRuns: 0,
+        ballInFlight: false,
+        swung: false,
+        ballTimeout: null,
+        bowlStart: 0,
+        bowlDuration: 1200,
+        sweetSpotTime: 0
+    };
+
+    $('btn-cricket-start').addEventListener('click', async () => {
+        $('btn-cricket-start').disabled = true;
+        $('btn-cricket-start').innerHTML = '<span class="spinner"></span>';
         try {
-            const data = await api('POST', `/quiz/${state.attemptId}/submit`, {
-                answers: state.answers
-            });
-            state.coins = data.coins;
-            state.correctCount = data.correctCount;
-            state.timeTakenSec = data.timeTakenSec;
-            startLeaderboardPolling();
-            showPhoneScreen();
+            await waitForLocation(3000);
+            const data = await api('POST', '/cricket/start');
+            state.attemptId = data.attemptId;
+            cricket.totalBalls = data.totalBalls || 6;
+            cricket.currentBall = 0;
+            cricket.totalRuns = 0;
+            showCricketGame();
         } catch (e) {
             toast(e.message);
+            $('btn-cricket-start').disabled = false;
+            $('btn-cricket-start').textContent = 'Start batting';
+        }
+    });
+
+    function showCricketGame() {
+        show('screen-cricket');
+        $('stumps').classList.remove('broken');
+        $('tap-hint').style.display = '';
+        updateCricketHud();
+        setTimeout(() => bowlBall(), 1000);
+    }
+
+    function updateCricketHud() {
+        $('cricket-ball-count').textContent = `${Math.min(cricket.currentBall + 1, cricket.totalBalls)}/${cricket.totalBalls}`;
+        $('cricket-score').textContent = cricket.totalRuns;
+        $('cricket-coins').textContent = `${cricket.totalRuns * 10} coins`;
+    }
+
+    function bowlBall() {
+        if (cricket.currentBall >= cricket.totalBalls) {
+            finishCricket();
+            return;
+        }
+
+        cricket.ballInFlight = true;
+        cricket.swung = false;
+        $('stumps').classList.remove('broken');
+        $('cricket-bat').classList.remove('swing');
+
+        const ball = $('cricket-ball');
+        const result = $('shot-result');
+        result.className = 'shot-result';
+
+        const field = $('cricket-field');
+        const fieldH = field.offsetHeight;
+        const stumpBottom = 80;
+        const batBottom = 100;
+        const targetY = fieldH - batBottom - 20;
+
+        // Random start position
+        const startOffsets = [-60, -30, 0, 30, 60];
+        const startX = (field.offsetWidth / 2) + startOffsets[Math.floor(Math.random() * startOffsets.length)];
+
+        ball.style.transition = 'none';
+        ball.style.left = startX + 'px';
+        ball.style.top = '-30px';
+        ball.style.opacity = '1';
+        ball.style.transform = 'scale(0.6)';
+        ball.offsetHeight;
+
+        // Bowl duration varies slightly
+        cricket.bowlDuration = 1000 + Math.random() * 400;
+        cricket.bowlStart = performance.now();
+        cricket.sweetSpotTime = cricket.bowlStart + cricket.bowlDuration * 0.78;
+
+        ball.style.transition = `top ${cricket.bowlDuration}ms cubic-bezier(0.2, 0, 0.8, 1), left ${cricket.bowlDuration}ms ease, transform ${cricket.bowlDuration}ms ease`;
+        ball.style.top = targetY + 'px';
+        ball.style.left = (field.offsetWidth / 2) + 'px';
+        ball.style.transform = 'scale(1)';
+
+        cricket.ballTimeout = setTimeout(() => {
+            if (!cricket.swung) {
+                handleMiss();
+            }
+        }, cricket.bowlDuration + 80);
+    }
+
+    function handleSwing() {
+        if (!cricket.ballInFlight || cricket.swung) return;
+        cricket.swung = true;
+        clearTimeout(cricket.ballTimeout);
+
+        $('tap-hint').style.display = 'none';
+        $('cricket-bat').classList.add('swing');
+
+        const now = performance.now();
+        const diff = Math.abs(now - cricket.sweetSpotTime);
+
+        let runs, label, cssClass;
+        if (diff < 60) {
+            runs = 6; label = 'SIX! 🔥'; cssClass = 'six';
+        } else if (diff < 140) {
+            runs = 4; label = 'FOUR!'; cssClass = 'four';
+        } else if (diff < 240) {
+            runs = 2; label = '2 Runs';  cssClass = '';
+        } else if (diff < 380) {
+            runs = 1; label = '1 Run'; cssClass = '';
+        } else {
+            runs = 0; label = 'OUT!'; cssClass = 'out';
+        }
+
+        if (runs > 0) {
+            animateBallHit(runs);
+            showShotResult(runs, label, cssClass);
+        } else {
+            handleMiss();
         }
     }
 
-    // ── Screen 3: Phone ──
+    function animateBallHit(runs) {
+        const ball = $('cricket-ball');
+        const field = $('cricket-field');
+        const w = field.offsetWidth;
+
+        ball.style.transition = 'top 0.6s ease-out, left 0.5s ease, transform 0.6s ease, opacity 0.5s ease';
+
+        if (runs === 6) {
+            ball.style.top = '-80px';
+            ball.style.left = (w / 2 + (Math.random() > 0.5 ? 40 : -40)) + 'px';
+            ball.style.transform = 'scale(0.3)';
+            ball.style.opacity = '0';
+        } else if (runs === 4) {
+            const side = Math.random() > 0.5 ? w + 20 : -20;
+            ball.style.top = '40%';
+            ball.style.left = side + 'px';
+            ball.style.opacity = '0';
+        } else if (runs === 2) {
+            ball.style.top = '20%';
+            ball.style.left = (Math.random() > 0.5 ? w * 0.8 : w * 0.2) + 'px';
+            ball.style.opacity = '0';
+        } else {
+            ball.style.top = '50%';
+            ball.style.left = (w * 0.3 + Math.random() * w * 0.4) + 'px';
+            ball.style.opacity = '0';
+        }
+    }
+
+    function handleMiss() {
+        cricket.swung = true;
+        cricket.ballInFlight = false;
+
+        const ball = $('cricket-ball');
+        const field = $('cricket-field');
+        const fieldH = field.offsetHeight;
+
+        ball.style.transition = 'top 0.15s linear';
+        ball.style.top = (fieldH - 70) + 'px';
+
+        setTimeout(() => {
+            $('stumps').classList.add('broken');
+            ball.style.opacity = '0';
+        }, 150);
+
+        cricket.currentBall++;
+        updateCricketHud();
+
+        const result = $('shot-result');
+        result.textContent = 'OUT!';
+        result.className = 'shot-result out show';
+
+        setTimeout(() => {
+            result.className = 'shot-result';
+            $('stumps').classList.remove('broken');
+            $('cricket-bat').classList.remove('swing');
+            bowlBall();
+        }, 1800);
+    }
+
+    function showShotResult(runs, label, cssClass) {
+        cricket.ballInFlight = false;
+        cricket.totalRuns += runs;
+        cricket.currentBall++;
+        updateCricketHud();
+
+        const result = $('shot-result');
+        result.textContent = label;
+        result.className = 'shot-result show' + (cssClass ? ' ' + cssClass : '');
+
+        setTimeout(() => {
+            result.className = 'shot-result';
+            $('cricket-bat').classList.remove('swing');
+            const ball = $('cricket-ball');
+            ball.style.transition = 'none';
+            ball.style.opacity = '0';
+            bowlBall();
+        }, 1500);
+    }
+
+    $('cricket-field').addEventListener('click', handleSwing);
+    $('cricket-field').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleSwing();
+    }, { passive: false });
+
+    async function finishCricket() {
+        try {
+            const data = await api('POST', `/cricket/${state.attemptId}/submit`, {
+                totalRuns: cricket.totalRuns
+            });
+            state.coins = data.coins;
+            state.timeTakenSec = data.timeTakenSec;
+            goToPhoneScreen();
+        } catch (e) { toast(e.message); }
+    }
+
+    // ══════════════════════════════
+    // SHARED POST-GAME FLOW
+    // ══════════════════════════════
+
+    function goToPhoneScreen() {
+        startLeaderboardPolling();
+        showPhoneScreen();
+    }
 
     function showPhoneScreen() {
         show('screen-phone');
@@ -315,62 +531,47 @@
         }
     });
 
-    // ── Screen 4: OTP + Consent ──
+    // ── OTP Screen ──
 
     function showOtpScreen() {
         show('screen-otp');
         renderLeaderboard('lb-otp');
-
         const masked = state.phone.substring(0, 5) + ' ' + state.phone.substring(5);
         $('otp-sent-text').textContent = `Sent to +91 ${masked}`;
-
         document.querySelectorAll('.otp-box').forEach(b => { b.value = ''; });
         document.querySelector('.otp-box').focus();
-
         $('consent-cibil').checked = false;
         $('consent-comms').checked = false;
         updateVerifyButton();
         startResendTimer();
     }
 
-    // OTP box navigation
     document.querySelectorAll('.otp-box').forEach((box, i, all) => {
         box.addEventListener('input', (e) => {
             const val = e.target.value.replace(/\D/g, '');
             e.target.value = val.slice(-1);
-            if (val && i < all.length - 1) {
-                all[i + 1].focus();
-            }
+            if (val && i < all.length - 1) all[i + 1].focus();
             updateVerifyButton();
         });
         box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !e.target.value && i > 0) {
-                all[i - 1].focus();
-            }
+            if (e.key === 'Backspace' && !e.target.value && i > 0) all[i - 1].focus();
         });
         box.addEventListener('paste', (e) => {
             e.preventDefault();
             const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
-            for (let j = 0; j < all.length && j < pasted.length; j++) {
-                all[j].value = pasted[j];
-            }
+            for (let j = 0; j < all.length && j < pasted.length; j++) all[j].value = pasted[j];
             const focusIdx = Math.min(pasted.length, all.length - 1);
             all[focusIdx].focus();
             updateVerifyButton();
         });
     });
 
-    // Consent toggles
     document.querySelectorAll('.consent-header').forEach(header => {
         const key = header.dataset.consent;
         const expandIcon = header.querySelector('.consent-expand');
         const body = $(`consent-${key}-body`);
-
         header.addEventListener('click', (e) => {
-            if (e.target.type === 'checkbox') {
-                updateVerifyButton();
-                return;
-            }
+            if (e.target.type === 'checkbox') { updateVerifyButton(); return; }
             expandIcon.classList.toggle('open');
             body.classList.toggle('open');
         });
@@ -394,7 +595,6 @@
         let sec = 30;
         $('resend-timer').style.display = '';
         $('btn-resend').style.display = 'none';
-
         if (resendInterval) clearInterval(resendInterval);
         resendInterval = setInterval(() => {
             sec--;
@@ -414,9 +614,7 @@
             document.querySelectorAll('.otp-box').forEach(b => { b.value = ''; });
             document.querySelector('.otp-box').focus();
             startResendTimer();
-        } catch (e) {
-            toast(e.message);
-        }
+        } catch (e) { toast(e.message); }
     });
 
     $('btn-verify').addEventListener('click', async () => {
@@ -443,28 +641,23 @@
         }
     });
 
-    // ── Screen 5: Result ──
+    // ── Result Screen ──
 
     function showResultScreen() {
         show('screen-result');
-
-        // Insert user into leaderboard at their rank
         const lb = [...state.leaderboard];
         const displayName = state.name || 'You';
         const userEntry = { rank: state.rank, name: displayName, coins: state.coins };
 
-        // Remove any existing entry at user's rank position if they're within the list
         const insertIdx = lb.findIndex(e => e.rank >= state.rank);
         if (insertIdx >= 0) {
             lb.splice(insertIdx, 0, userEntry);
-            // Re-number ranks and cap at display size
             lb.forEach((e, i) => e.rank = i + 1);
         } else {
             userEntry.rank = lb.length + 1;
             lb.push(userEntry);
         }
 
-        // Show top entries + user if outside top
         const display = lb.slice(0, Math.max(5, state.rank));
         state.leaderboard = display;
         renderLeaderboard('lb-result', state.rank);
@@ -474,19 +667,12 @@
         $('result-rank-text').textContent = `Rank ${state.rank} of ${total} today`;
     }
 
-    // btn-claim is now a direct WhatsApp link — no JS handler needed
-
-    // ── Leaderboard auto-refresh on screens 3 & 4 ──
-
-    const originalPoll = pollLeaderboard;
+    // Leaderboard auto-refresh on active screens
+    const _origPoll = pollLeaderboard;
     pollLeaderboard = async function () {
-        await originalPoll();
-        if ($('screen-phone').classList.contains('active')) {
-            renderLeaderboard('lb-phone');
-        }
-        if ($('screen-otp').classList.contains('active')) {
-            renderLeaderboard('lb-otp');
-        }
+        await _origPoll();
+        if ($('screen-phone').classList.contains('active')) renderLeaderboard('lb-phone');
+        if ($('screen-otp').classList.contains('active')) renderLeaderboard('lb-otp');
     };
 
 })();
