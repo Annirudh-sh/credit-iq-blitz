@@ -45,13 +45,19 @@ CREATE TABLE IF NOT EXISTS h_device_info (
     id                VARCHAR(36)  NOT NULL PRIMARY KEY,
     game_attempt_id   VARCHAR(36)  NOT NULL,
     device_id         VARCHAR(64),
-    device_type       VARCHAR(20),
     device_model      VARCHAR(100),
-    browser_info      TEXT,
-    ip_address        VARCHAR(45),
     user_lat          DOUBLE,
     user_lng          DOUBLE,
+    city              VARCHAR(100),
     CONSTRAINT fk_device_attempt FOREIGN KEY (game_attempt_id) REFERENCES h_game_attempt(id)
+);
+
+CREATE TABLE IF NOT EXISTS h_city_device_score (
+    id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+    city            VARCHAR(100) NOT NULL,
+    device_model    VARCHAR(100) NOT NULL,
+    score           INT          NOT NULL DEFAULT 5,
+    UNIQUE INDEX idx_city_device (city, device_model)
 );
 
 CREATE TABLE IF NOT EXISTS h_otp_code (

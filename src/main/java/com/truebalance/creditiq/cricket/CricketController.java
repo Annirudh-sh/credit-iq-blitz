@@ -3,7 +3,6 @@ package com.truebalance.creditiq.cricket;
 import com.truebalance.creditiq.cricket.dto.CricketStartResponse;
 import com.truebalance.creditiq.cricket.dto.CricketSubmitRequest;
 import com.truebalance.creditiq.cricket.dto.CricketSubmitResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,15 +24,10 @@ public class CricketController {
     @PostMapping("/start")
     public CricketStartResponse start(
             @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
-            @RequestHeader(value = "X-Device-Type", required = false) String deviceType,
             @RequestHeader(value = "X-Device-Model", required = false) String deviceModel,
             @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude,
-            HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = request.getRemoteAddr();
-        String browserInfo = request.getHeader("User-Agent");
-        return cricketService.start(deviceId, deviceType, deviceModel, browserInfo, ip, latitude, longitude);
+            @RequestHeader(value = "X-Longitude", required = false) Double longitude) {
+        return cricketService.start(deviceId, deviceModel, latitude, longitude);
     }
 
     @PostMapping("/{attemptId}/submit")

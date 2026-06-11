@@ -11,6 +11,7 @@ import com.truebalance.creditiq.quiz.DeviceInfo;
 import com.truebalance.creditiq.quiz.DeviceInfoRepository;
 import com.truebalance.creditiq.quiz.GameAttempt;
 import com.truebalance.creditiq.quiz.GameAttemptRepository;
+import com.truebalance.creditiq.quiz.GeoService;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -22,17 +23,19 @@ public class CricketService {
     private final GameAttemptRepository attemptRepository;
     private final DeviceInfoRepository deviceInfoRepository;
     private final AppProperties appProperties;
+    private final GeoService geoService;
 
     public CricketService(GameAttemptRepository attemptRepository,
                           DeviceInfoRepository deviceInfoRepository,
-                          AppProperties appProperties) {
+                          AppProperties appProperties,
+                          GeoService geoService) {
         this.attemptRepository = attemptRepository;
         this.deviceInfoRepository = deviceInfoRepository;
         this.appProperties = appProperties;
+        this.geoService = geoService;
     }
 
-    public CricketStartResponse start(String deviceId, String deviceType, String deviceModel,
-                                      String browserInfo, String ipAddress, Double lat, Double lng) {
+    public CricketStartResponse start(String deviceId, String deviceModel, Double lat, Double lng) {
         var attempt = new GameAttempt();
         attempt.setGameType(GameType.CRICKET.name());
         attempt.setStartedAt(Instant.now());
@@ -41,12 +44,10 @@ public class CricketService {
         var device = new DeviceInfo();
         device.setGameAttemptId(attempt.getId());
         device.setDeviceId(deviceId);
-        device.setDeviceType(deviceType);
         device.setDeviceModel(deviceModel);
-        device.setBrowserInfo(browserInfo);
-        device.setIpAddress(ipAddress);
         device.setUserLat(lat);
         device.setUserLng(lng);
+        device.setCity(geoService.resolveCity(lat, lng));
         deviceInfoRepository.save(device);
 
         return new CricketStartResponse(attempt.getId(), appProperties.cricket().maxBalls());

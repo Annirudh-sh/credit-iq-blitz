@@ -26,23 +26,17 @@ public class DeviceInfo {
     @Column(name = "device_id", length = 64)
     private String deviceId;
 
-    @Column(name = "device_type", length = 20)
-    private String deviceType;
-
     @Column(name = "device_model", length = 100)
     private String deviceModel;
-
-    @Column(name = "browser_info", columnDefinition = "TEXT")
-    private String browserInfo;
-
-    @Column(name = "ip_address", length = 45)
-    private String ipAddress;
 
     @Column(name = "user_lat")
     private Double userLat;
 
     @Column(name = "user_lng")
     private Double userLng;
+
+    @Column(name = "city", length = 100)
+    private String city;
 
     @PrePersist
     void generateId() {

@@ -17,17 +17,19 @@ public class QuizService {
     private final GameAttemptRepository attemptRepository;
     private final DeviceInfoRepository deviceInfoRepository;
     private final QuestionService questionService;
+    private final GeoService geoService;
 
     public QuizService(GameAttemptRepository attemptRepository,
                        DeviceInfoRepository deviceInfoRepository,
-                       QuestionService questionService) {
+                       QuestionService questionService,
+                       GeoService geoService) {
         this.attemptRepository = attemptRepository;
         this.deviceInfoRepository = deviceInfoRepository;
         this.questionService = questionService;
+        this.geoService = geoService;
     }
 
-    public StartResponse start(String deviceId, String deviceType, String deviceModel,
-                               String browserInfo, String ipAddress, Double lat, Double lng) {
+    public StartResponse start(String deviceId, String deviceModel, Double lat, Double lng) {
         var attempt = new GameAttempt();
         attempt.setGameType(GameType.CREDIT_IQ.name());
         attempt.setStartedAt(Instant.now());
@@ -36,12 +38,10 @@ public class QuizService {
         var device = new DeviceInfo();
         device.setGameAttemptId(attempt.getId());
         device.setDeviceId(deviceId);
-        device.setDeviceType(deviceType);
         device.setDeviceModel(deviceModel);
-        device.setBrowserInfo(browserInfo);
-        device.setIpAddress(ipAddress);
         device.setUserLat(lat);
         device.setUserLng(lng);
+        device.setCity(geoService.resolveCity(lat, lng));
         deviceInfoRepository.save(device);
 
         return new StartResponse(attempt.getId(), questionService.getAllForClient());

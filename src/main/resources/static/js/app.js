@@ -28,15 +28,16 @@
     // ── Device info ──
 
     function parseDeviceModel(ua) {
-        const android = ua.match(/;\s*([^;)]+)\s+Build\//);
-        if (android) return android[1].trim();
-        const android2 = ua.match(/Android[^;]*;\s*([^;)]+)/);
-        if (android2) return android2[1].trim();
         if (/iPhone/.test(ua)) return 'iPhone';
         if (/iPad/.test(ua)) return 'iPad';
+        const android = ua.match(/;\s*([^;)]+)\s+Build\//) || ua.match(/Android[^;]*;\s*([^;)]+)/);
+        if (android) {
+            const code = android[1].trim();
+            if (code.startsWith('SM-') || code.startsWith('GT-')) return 'Galaxy';
+            return code;
+        }
         if (/Macintosh/.test(ua)) return 'Mac';
         if (/Windows/.test(ua)) return 'Windows PC';
-        if (/Linux/.test(ua)) return 'Linux';
         return 'Unknown';
     }
 
@@ -97,7 +98,6 @@
         const headers = {
             'Content-Type': 'application/json',
             'X-Device-Id': device.id,
-            'X-Device-Type': device.type,
             'X-Device-Model': device.model
         };
         if (device.lat != null) headers['X-Latitude'] = String(device.lat);

@@ -4,6 +4,8 @@ import com.truebalance.creditiq.common.BadRequestException;
 import com.truebalance.creditiq.common.NotFoundException;
 import com.truebalance.creditiq.config.AppProperties;
 import com.truebalance.creditiq.enrichment.EnrichmentService;
+import com.truebalance.creditiq.quiz.DeviceInfo;
+import com.truebalance.creditiq.quiz.DeviceInfoRepository;
 import com.truebalance.creditiq.quiz.GameAttempt;
 import com.truebalance.creditiq.quiz.GameAttemptRepository;
 import com.truebalance.creditiq.verification.dto.VerifyResponse;
@@ -35,6 +37,7 @@ public class OtpService {
     private final UserRepository userRepository;
     private final LeadRepository leadRepository;
     private final GameAttemptRepository attemptRepository;
+    private final DeviceInfoRepository deviceInfoRepository;
     private final EnrichmentService enrichmentService;
     private final AppProperties appProperties;
 
@@ -42,12 +45,14 @@ public class OtpService {
                       UserRepository userRepository,
                       LeadRepository leadRepository,
                       GameAttemptRepository attemptRepository,
+                      DeviceInfoRepository deviceInfoRepository,
                       EnrichmentService enrichmentService,
                       AppProperties appProperties) {
         this.otpRepository = otpRepository;
         this.userRepository = userRepository;
         this.leadRepository = leadRepository;
         this.attemptRepository = attemptRepository;
+        this.deviceInfoRepository = deviceInfoRepository;
         this.enrichmentService = enrichmentService;
         this.appProperties = appProperties;
     }
@@ -116,8 +121,17 @@ public class OtpService {
         lead.setConsentText(CONSENT_TEXT);
         leadRepository.save(lead);
 
+        // Lookup device info for city + model
+        String city = null;
+        String deviceModel = null;
+        var deviceOpt = deviceInfoRepository.findByGameAttemptId(attempt.getId());
+        if (deviceOpt.isPresent()) {
+            city = deviceOpt.get().getCity();
+            deviceModel = deviceOpt.get().getDeviceModel();
+        }
+
         // Enrichment (CIBIL check, categorize, CRM push)
-        enrichmentService.enrich(user, lead, attempt.getCoins());
+        enrichmentService.enrich(user, lead, attempt.getCoins(), city, deviceModel);
 
         long above = attemptRepository.countRankedAbove(attempt.getGameType(), attempt.getCoins(), attempt.getTimeTakenSec());
         int rank = (int) above + 1;

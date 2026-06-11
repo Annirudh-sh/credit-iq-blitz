@@ -3,7 +3,6 @@ package com.truebalance.creditiq.quiz;
 import com.truebalance.creditiq.quiz.dto.StartResponse;
 import com.truebalance.creditiq.quiz.dto.SubmitRequest;
 import com.truebalance.creditiq.quiz.dto.SubmitResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,17 +24,10 @@ public class QuizController {
     @PostMapping("/start")
     public StartResponse start(
             @RequestHeader(value = "X-Device-Id", required = false) String deviceId,
-            @RequestHeader(value = "X-Device-Type", required = false) String deviceType,
             @RequestHeader(value = "X-Device-Model", required = false) String deviceModel,
             @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude,
-            HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) {
-            ip = request.getRemoteAddr();
-        }
-        String browserInfo = request.getHeader("User-Agent");
-        return quizService.start(deviceId, deviceType, deviceModel, browserInfo, ip, latitude, longitude);
+            @RequestHeader(value = "X-Longitude", required = false) Double longitude) {
+        return quizService.start(deviceId, deviceModel, latitude, longitude);
     }
 
     @PostMapping("/{attemptId}/submit")
