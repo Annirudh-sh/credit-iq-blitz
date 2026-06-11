@@ -474,9 +474,7 @@
         $('result-rank-text').textContent = `Rank ${state.rank} of ${total} today`;
     }
 
-    $('btn-claim').addEventListener('click', () => {
-        toast('Opening True Balance app...');
-    });
+    // btn-claim is now a direct WhatsApp link — no JS handler needed
 
     // ── Leaderboard auto-refresh on screens 3 & 4 ──
 
