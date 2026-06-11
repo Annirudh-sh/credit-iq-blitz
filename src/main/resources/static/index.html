@@ -17,6 +17,21 @@
         <p class="start-subtitle">Choose a game, climb the leaderboard, claim your coins.</p>
 
         <div class="game-cards">
+            <div class="game-card" data-game="CRICKET">
+                <div class="game-card-icon cricket-icon">
+                    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="22" cy="8" r="4"/>
+                        <line x1="4" y1="28" x2="18" y2="10"/>
+                        <line x1="14" y1="24" x2="18" y2="20"/>
+                    </svg>
+                </div>
+                <div class="game-card-info">
+                    <h3>TB Cricket</h3>
+                    <p>6 balls. Smash big.</p>
+                    <span class="coin-pill small">Up to 360 coins</span>
+                </div>
+            </div>
+
             <div class="game-card" data-game="CREDIT_IQ">
                 <div class="game-card-icon quiz-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -27,21 +42,6 @@
                     <h3>Credit IQ Blitz</h3>
                     <p>5 questions. Beat the clock.</p>
                     <span class="coin-pill small">Up to 250 coins</span>
-                </div>
-            </div>
-
-            <div class="game-card" data-game="CRICKET">
-                <div class="game-card-icon cricket-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="5" r="3"/>
-                        <line x1="12" y1="8" x2="12" y2="20"/>
-                        <line x1="6" y1="12" x2="18" y2="12"/>
-                    </svg>
-                </div>
-                <div class="game-card-info">
-                    <h3>TB Cricket</h3>
-                    <p>6 balls. Time your shots.</p>
-                    <span class="coin-pill small">Up to 360 coins</span>
                 </div>
             </div>
 
@@ -96,10 +96,10 @@
     <div id="screen-cricket-start" class="screen start-screen">
         <span class="brand-name">True Balance</span>
         <div class="hero-icon cricket-hero">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="5" r="3"/>
-                <line x1="12" y1="8" x2="12" y2="20"/>
-                <line x1="6" y1="12" x2="18" y2="12"/>
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="22" cy="8" r="4"/>
+                <line x1="4" y1="28" x2="18" y2="10"/>
+                <line x1="14" y1="24" x2="18" y2="20"/>
             </svg>
         </div>
         <h1 class="start-title">TB Cricket</h1>
@@ -155,7 +155,7 @@
         </div>
         <h2 class="section-title">See where you rank</h2>
         <p class="section-subtitle">Enter your details to claim your spot.</p>
-        <label style="font-size:13px;font-weight:500;color:var(--muted);margin-top:8px;">Your name</label>
+        <label style="font-size:13px;font-weight:500;color:var(--muted);margin-top:8px;">Your full name</label>
         <div class="phone-input-group">
             <input class="phone-input" id="name-input" type="text"
                    placeholder="Enter your full name" maxlength="50" autocomplete="name">
@@ -179,7 +179,7 @@
             <div class="leaderboard-list" id="lb-otp"></div>
         </div>
         <h2 class="section-title" style="text-align:center">Enter the code</h2>
-        <p class="otp-sent-text" id="otp-sent-text">Sent to +91 98765 43210</p>
+        <p class="otp-sent-text" id="otp-sent-text"></p>
         <div class="otp-boxes">
             <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-otp="0">
             <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-otp="1">
@@ -266,6 +266,7 @@
             Claim coins on True Balance
         </a>
         <p class="claim-note">Redeemable only inside True Balance App</p>
+        <button class="btn-play-again" id="btn-play-again">Play another game</button>
     </div>
 
 </div>

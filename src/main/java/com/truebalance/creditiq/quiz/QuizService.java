@@ -66,6 +66,6 @@ public class QuizService {
         attempt.setTimeTakenSec(timeTakenSec);
         attemptRepository.save(attempt);
 
-        return new SubmitResponse(coins, score, timeTakenSec);
+        return new SubmitResponse(coins, score, timeTakenSec, questionService.getAnswerKey());
     }
 }

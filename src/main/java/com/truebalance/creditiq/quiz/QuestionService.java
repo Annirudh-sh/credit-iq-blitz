@@ -8,7 +8,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class QuestionService {
@@ -28,8 +30,16 @@ public class QuestionService {
 
     public List<QuestionDto> getAllForClient() {
         return questions.stream()
-                .map(q -> new QuestionDto(q.id(), q.text(), q.options(), q.correctIndex()))
+                .map(q -> new QuestionDto(q.id(), q.text(), q.options()))
                 .toList();
+    }
+
+    public Map<String, Integer> getAnswerKey() {
+        var map = new LinkedHashMap<String, Integer>();
+        for (var q : questions) {
+            map.put(q.id(), q.correctIndex());
+        }
+        return map;
     }
 
     public int score(List<com.truebalance.creditiq.quiz.dto.AnswerDto> answers) {

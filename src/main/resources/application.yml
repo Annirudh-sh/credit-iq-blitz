@@ -21,7 +21,7 @@ app:
     coins-per-run: ${COINS_PER_RUN:10}
     max-balls: ${CRICKET_MAX_BALLS:6}
   leaderboard:
-    size: ${LEADERBOARD_SIZE:10}
+    size: ${LEADERBOARD_SIZE:6}
   otp:
     fixed-code: ${OTP_FIXED_CODE:1234}
     ttl-minutes: ${OTP_TTL_MIN:5}

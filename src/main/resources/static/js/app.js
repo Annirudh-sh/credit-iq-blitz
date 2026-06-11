@@ -5,6 +5,24 @@
     const QUESTION_TIME = 15;
     const LEADERBOARD_POLL_MS = 3000;
 
+    const SAVE_KEY = 'creditiq_state';
+
+    function saveState() {
+        try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function loadState() {
+        try {
+            const s = sessionStorage.getItem(SAVE_KEY);
+            if (s) return JSON.parse(s);
+        } catch (e) {}
+        return null;
+    }
+
+    function clearSavedState() {
+        sessionStorage.removeItem(SAVE_KEY);
+    }
+
     let state = {
         gameType: null,
         attemptId: null,
@@ -18,7 +36,8 @@
         name: '',
         rank: 0,
         totalPlayers: 0,
-        leaderboard: []
+        leaderboard: [],
+        screen: 'screen-home'
     };
 
     let timerInterval = null;
@@ -85,6 +104,8 @@
     function show(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         $(screenId).classList.add('active');
+        state.screen = screenId;
+        saveState();
     }
 
     function toast(msg) {
@@ -119,6 +140,10 @@
     function renderLeaderboard(containerId, highlightRank) {
         const container = $(containerId);
         container.innerHTML = '';
+        if (!state.leaderboard.length) {
+            container.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">No players yet. Be the first!</p>';
+            return;
+        }
         state.leaderboard.forEach(entry => {
             const isMe = highlightRank && entry.rank === highlightRank;
             const row = document.createElement('div');
@@ -230,17 +255,12 @@
     function selectOption(index) {
         clearInterval(timerInterval);
         const q = state.questions[state.currentQ];
-        const correct = q.correctIndex;
         const options = $('q-options').children;
         for (let i = 0; i < options.length; i++) options[i].style.pointerEvents = 'none';
-
-        options[correct].classList.add('correct');
-        if (index !== correct) {
-            options[index].classList.add('wrong');
-        }
+        options[index].classList.add('selected');
 
         state.answers.push({ questionId: q.id, selectedIndex: index });
-        setTimeout(() => advanceQuestion(), 1000);
+        setTimeout(() => advanceQuestion(), 600);
     }
 
     function autoAdvance() {
@@ -256,11 +276,54 @@
             try {
                 const data = await api('POST', `/quiz/${state.attemptId}/submit`, { answers: state.answers });
                 state.coins = data.coins;
-                state.correctCount = data.correctCount;
+                state.correctCount = data.score;
                 state.timeTakenSec = data.timeTakenSec;
-                goToPhoneScreen();
+                state.correctAnswers = data.correctAnswers;
+                showQuizReview();
             } catch (e) { toast(e.message); }
         }
+    }
+
+    function showQuizReview() {
+        show('screen-question');
+        $('q-count').textContent = 'Results';
+        $('q-timer').style.display = 'none';
+        $('progress-fill').style.width = '100%';
+        $('q-text').textContent = `You got ${state.correctCount} of ${state.questions.length} correct!`;
+
+        const optContainer = $('q-options');
+        optContainer.innerHTML = '';
+        state.questions.forEach((q, qi) => {
+            const label = document.createElement('div');
+            label.style.cssText = 'font-size:14px;font-weight:600;margin-top:12px;color:var(--ink)';
+            label.textContent = `Q${qi + 1}: ${q.text}`;
+            optContainer.appendChild(label);
+
+            const correctIdx = state.correctAnswers[q.id];
+            const userIdx = state.answers[qi] ? state.answers[qi].selectedIndex : -1;
+
+            q.options.forEach((opt, oi) => {
+                const div = document.createElement('div');
+                div.className = 'option';
+                div.textContent = opt;
+                div.style.pointerEvents = 'none';
+                div.style.padding = '10px 14px';
+                div.style.fontSize = '13px';
+                if (oi === correctIdx) div.classList.add('correct');
+                if (oi === userIdx && userIdx !== correctIdx) div.classList.add('wrong');
+                optContainer.appendChild(div);
+            });
+        });
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-primary';
+        btn.style.cssText = 'margin-top:20px;align-self:center';
+        btn.textContent = 'Continue';
+        btn.addEventListener('click', () => {
+            $('q-timer').style.display = '';
+            goToPhoneScreen();
+        });
+        optContainer.appendChild(btn);
     }
 
     // ══════════════════════════════
@@ -681,5 +744,42 @@
         if ($('screen-phone').classList.contains('active')) renderLeaderboard('lb-phone');
         if ($('screen-otp').classList.contains('active')) renderLeaderboard('lb-otp');
     };
+
+    // ── Play Again ──
+    $('btn-play-again').addEventListener('click', () => {
+        stopLeaderboardPolling();
+        clearSavedState();
+        state.attemptId = null;
+        state.questions = [];
+        state.currentQ = 0;
+        state.answers = [];
+        state.coins = 0;
+        state.correctCount = 0;
+        state.correctAnswers = null;
+        show('screen-home');
+    });
+
+    // ── Restore state on refresh ──
+    const saved = loadState();
+    if (saved && saved.screen && saved.screen !== 'screen-home') {
+        Object.assign(state, saved);
+        const s = state.screen;
+        if (s === 'screen-phone') {
+            startLeaderboardPolling();
+            show('screen-phone');
+            renderLeaderboard('lb-phone');
+        } else if (s === 'screen-otp') {
+            startLeaderboardPolling();
+            showOtpScreen();
+        } else if (s === 'screen-result') {
+            show('screen-result');
+            renderLeaderboard('lb-result', state.rank);
+            $('result-coins').textContent = state.coins;
+            const total = state.totalPlayers.toLocaleString('en-IN');
+            $('result-rank-text').textContent = `Rank ${state.rank} of ${total} today`;
+        } else {
+            show('screen-home');
+        }
+    }
 
 })();
